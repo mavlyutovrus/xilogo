@@ -1,0 +1,346 @@
+
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - particles</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background-color: #000000;
+				margin: 0px;
+				overflow: hidden;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				font-weight: bold;
+				text-align:center;
+			}
+
+			a {
+				color:#0078ff;
+			}
+
+			#info {
+				color: #fff;
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+				z-index: 100;
+			}
+
+		</style>
+	</head>
+	<body>
+		<script src="js/three.min.js"></script>
+		<script src="js/Detector.js"></script>
+		<script>
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+			
+			var container;
+			var camera, scene, renderer, particles, geometries = [], materials = [], parameters, i, h, color, size;
+			var mouseX = 0, mouseY = 0;
+			
+			var animation_frame = 0;
+			var max_animation_frame = 300;
+			var camera_z_final_position = 2000;
+
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+			
+			var bigx_size = 1000;
+
+			init();
+			animate();
+
+			function init() {
+				
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 3000 );
+				camera.position.z = 0;
+				
+				scene = new THREE.Scene();
+				//scene.fog = new THREE.FogExp2( 0x000000, 0.0007 );
+				
+				geometries = [];
+				
+				
+				
+				
+				
+				var bigx_stroke_x_width = 0.4;
+				var bigi_x_width = 0.35;
+				var bigi_dot_height = 0.18;
+				var main_angle = 60 * Math.PI / 180;
+				var logo_width = bigx_size * (1 + bigi_x_width);
+				var logo_height = bigx_size;
+				
+				var vertices = [];
+				
+				if (true) {
+					var points_count = 40000;
+					var final_x_offset = (0.5 - (1 + bigi_x_width) / 2) * bigx_size;
+					
+					var total_xy_area = 1 + bigi_x_width - 0.5 * 0.5 * (1/Math.tan(main_angle)) * 2;
+					total_xy_area += -bigi_dot_height * bigi_x_width * 0.5;
+					total_xy_area += -(0.5 - bigx_stroke_x_width) * (0.5 - bigx_stroke_x_width) * Math.tan(main_angle) * 2;
+					
+					
+					
+					var bigx_stroke_area = bigx_stroke_x_width;
+					var bigi_stroke_area = (1 - bigi_dot_height) * bigi_x_width;
+					var dot_stroke_area = bigi_x_width * bigi_dot_height * 0.5
+					
+					
+					for (var i = 0; i <= points_count * bigx_stroke_area / total_xy_area; ++i ) {
+						var vertex = new THREE.Vector3();
+						vertex.z = Math.random() * bigx_size/2 - bigx_size / 4;
+						vertex.y = Math.random() * bigx_size - bigx_size / 2;
+						vertex.x = Math.random() * bigx_size * bigx_stroke_x_width - bigx_size * bigx_stroke_x_width / 2;
+						vertex.x += vertex.y * (1/Math.tan(main_angle));
+						vertex.x += final_x_offset;
+						vertices.push(vertex);
+					}
+					
+					
+					for (var i = 0; i <= points_count * bigx_stroke_area / total_xy_area; ++i ) {
+						var vertex = new THREE.Vector3();
+						vertex.z = Math.random() * bigx_size/2 - bigx_size / 4;
+						vertex.y = (Math.random() - 0.5) * bigx_size;
+						vertex.x = (Math.random() - 0.5) * bigx_stroke_x_width * bigx_size;
+						vertex.x -= vertex.y * (1/Math.tan(main_angle));
+						
+						var border_y_plus = (vertex.x + (0.085 + 0.5 - bigx_stroke_x_width)  * bigx_size) * Math.tan(main_angle);
+						var border_y_minus = (vertex.x - (0.085 + 0.5 - bigx_stroke_x_width) * bigx_size) * Math.tan(main_angle);
+						if (vertex.y <= border_y_plus && vertex.y >= border_y_minus) {
+							continue;
+						}
+						vertex.x += final_x_offset;
+						vertices.push(vertex);
+	
+					}
+					
+					for (var i = 0; i < points_count * bigi_stroke_area / total_xy_area; ++i) {
+						var vertex = new THREE.Vector3();
+						vertex.z = Math.random() * bigx_size/2 - bigx_size / 4;
+						vertex.y = Math.random() * (1 - bigi_dot_height) * bigx_size - bigx_size / 2;
+						vertex.x = Math.random() * bigx_size * bigi_x_width + bigx_size / 2;
+						vertex.x += final_x_offset;
+						vertices.push(vertex);
+					}
+	
+					for (var i = 0; i < points_count * dot_stroke_area / total_xy_area; ++i ) {
+						var vertex = new THREE.Vector3();
+						vertex.z = Math.random() * bigx_size/2 - bigx_size / 4;
+						var x_nooffset = Math.random() * bigx_size * bigi_x_width;
+						var y_nooffset = Math.random() * bigi_dot_height * bigx_size;
+						var y_delim_pos = (bigi_x_width * bigx_size - x_nooffset) * bigi_dot_height / bigi_x_width;
+						if (y_nooffset < y_delim_pos) {
+							x_nooffset = bigi_x_width * bigx_size - x_nooffset
+	 						y_nooffset = bigi_dot_height * bigx_size - y_nooffset;
+						}
+						vertex.x = x_nooffset + bigx_size / 2;
+						vertex.y = y_nooffset + bigx_size * (0.5 - bigi_dot_height);
+						vertex.x += final_x_offset;
+						vertices.push(vertex);
+					}
+				}
+				
+				
+				
+				var cell2xi_size = 0.15;
+				var cell_x_offset = -0.03;
+				var cells_z_rotation = 60 * Math.PI / 180;
+				var cellsize = bigx_size * cell2xi_size;
+				
+				
+				var coord2geometry = [];
+				for (var index = 0; index < vertices.length; ++index) {
+					var x = cell_x_offset * bigx_size + Math.cos(cells_z_rotation) * vertices[index].x - Math.sin(cells_z_rotation) * vertices[index].y;
+					var y = Math.sin(cells_z_rotation) * vertices[index].x + Math.cos(cells_z_rotation) * vertices[index].y;
+					var z =  vertices[index].z;
+					
+				    var block_x = Math.floor(x / cellsize);
+				    var block_y = Math.floor(y / cellsize);
+				    var block_z = Math.floor(z / cellsize);				    
+				    if (block_z != 3) {
+				    	//continue;
+				    }
+				    var diagonal = (x - block_x * cellsize) < (y - block_y * cellsize) ? 1 : 0;
+				    
+				    var key = String(block_x) + ":" + String(block_y) + ":" + String(block_z) + ":" + String(diagonal);
+				    if (!coord2geometry[key]) {
+				    	coord2geometry[key] = geometries.length;
+				    	geometries.push(new THREE.Geometry());
+				    } 
+				    if (coord2geometry[key] < geometries.length) {
+				    	geometries[coord2geometry[key]].vertices.push(vertices[index]);
+				    }
+				}				
+				
+				var colors = [0x00ff00, 0x00cc33, 0x009966, 0x007799, ];
+				
+				for ( i = 0; i < geometries.length; i ++ ) {
+					color = colors[i % colors.length];
+					size  = 2 + Math.floor(Math.random() * 5);
+					materials[i] = new THREE.PointCloudMaterial( { size: size, color : color } );
+
+					particles = new THREE.PointCloud( geometries[i], materials[i] );
+
+					//particles.rotation.x = 30 * Math.PI / 180;
+					//particles.rotation.y = 30 * Math.PI / 180;
+					//particles.rotation.z = Math.random() * 6;
+
+					//particles.rotation.x = 0;
+					//particles.rotation.y = 0;
+					//particles.rotation.z = 0;
+					
+					scene.add( particles );
+
+				}
+				
+				
+				
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+				
+				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+				document.addEventListener( 'touchstart', onDocumentTouchStart, false );
+				document.addEventListener( 'touchmove', onDocumentTouchMove, false );
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function onDocumentMouseMove( event ) {
+
+				mouseX = event.clientX - windowHalfX;
+				mouseY = event.clientY - windowHalfY;
+
+			}
+
+			function onDocumentTouchStart( event ) {
+
+				if ( event.touches.length === 1 ) {
+
+					event.preventDefault();
+
+					mouseX = event.touches[ 0 ].pageX - windowHalfX;
+					mouseY = event.touches[ 0 ].pageY - windowHalfY;
+
+				}
+
+			}
+
+			function onDocumentTouchMove( event ) {
+
+				if ( event.touches.length === 1 ) {
+
+					event.preventDefault();
+
+					mouseX = event.touches[ 0 ].pageX - windowHalfX;
+					mouseY = event.touches[ 0 ].pageY - windowHalfY;
+
+				}
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+				render();
+
+			}
+
+			function render() {
+				
+				++animation_frame;
+				
+				camera.position.x += ( mouseX - camera.position.x ) * 0.15;
+				camera.position.y += ( - mouseY - camera.position.y ) * 0.15;
+				
+				
+				
+				if (animation_frame <= max_animation_frame) {
+					
+					camera.rotation.y =  Math.cos(animation_frame / max_animation_frame);
+					
+					
+					var time = Date.now() * 0.00005;
+					
+					if (camera.position.z < 3500) camera.position.z += camera_z_final_position / max_animation_frame;
+	
+
+					//camera.position.z += 1;
+					
+					
+					camera.lookAt( scene.position );
+	
+					
+					for ( i = 0; i < scene.children.length; i ++ ) {
+	
+						var object = scene.children[ i ];
+	
+						if ( object instanceof THREE.PointCloud ) {
+							
+							//object.position.z = Math.cos(bigx_size * animation_frame/10);
+							
+							var speed_ratio = (i % 3) + 1;
+							if (max_animation_frame / speed_ratio <= animation_frame) {
+								//continue;
+							}
+							
+							if (i % 3 == 0) object.rotation.y += 360 * (Math.PI / 180) * speed_ratio * Math.pow(-1, i) / max_animation_frame;
+							if (i % 3 == 1) object.rotation.x += 360 * (Math.PI / 180) * speed_ratio * Math.pow(-1, i) / max_animation_frame;
+							if (i % 3 == 2) object.rotation.z += 360 * (Math.PI / 180) * speed_ratio * Math.pow(-1, i) / max_animation_frame;
+							if (i % 6 == 0) object.rotation.z += 360 * (Math.PI / 180) * speed_ratio * Math.pow(-1, i) / max_animation_frame;
+							if (i % 6 == 1) object.rotation.y += 360 * (Math.PI / 180) * speed_ratio * Math.pow(-1, i) / max_animation_frame;
+							if (i % 6 == 2) object.rotation.x += 360 * (Math.PI / 180) * speed_ratio * Math.pow(-1, i) / max_animation_frame;	
+						    
+							
+						
+						}
+	
+					}
+					
+	
+					/*
+					for ( i = 0; i < materials.length; i ++ ) {
+	
+						color = parameters[i][0];
+	
+						h = ( 360 * ( color[0] + time ) % 360 ) / 360;
+						materials[i].color.setHSL( h, color[1], color[2] );
+	
+					}
+					*/
+				
+				}
+
+				renderer.render( scene, camera );
+
+			}
+
+
+		</script>
+	</body>
+</html>
+
